@@ -4,7 +4,9 @@ from django.utils.html import escape
 from lists.forms import ItemForm, EMPTY_ITEM_ERROR
 from lists.models import Item, List
 
+
 class HomePageTest(TestCase):
+
     def test_home_page_renders_home_template(self):
         response = self.client.get('/')
         self.assertTemplateUsed(response, 'home.html')
@@ -75,6 +77,13 @@ class ListViewTest(TestCase):
         self.assertEqual(response.context['list'], correct_list)
 
 
+    def test_displays_item_form(self):
+        list_ = List.objects.create()
+        response = self.client.get('/lists/%d/' % (list_.id,))
+        self.assertIsInstance(response.context['form'], ItemForm)
+        self.assertContains(response, 'name="text"')
+
+
     def test_displays_only_items_for_that_list(self):
         correct_list = List.objects.create()
         Item.objects.create(text='itemey 1', list=correct_list)
@@ -90,10 +99,10 @@ class ListViewTest(TestCase):
         self.assertNotContains(response, 'other list item 1')
         self.assertNotContains(response, 'other list item 2')
 
+
     def test_can_save_a_POST_request_to_an_existing_list(self):
         other_list = List.objects.create()
         correct_list = List.objects.create()
-
         self.client.post(
             '/lists/%d/' % (correct_list.id,),
             data={'text': 'A new item for an existing list'}
@@ -104,15 +113,16 @@ class ListViewTest(TestCase):
         self.assertEqual(new_item.text, 'A new item for an existing list')
         self.assertEqual(new_item.list, correct_list)
 
+
     def test_POST_redirects_to_list_view(self):
         other_list = List.objects.create()
         correct_list = List.objects.create()
-
         response = self.client.post(
             '/lists/%d/' % (correct_list.id,),
             data={'text': 'A new item for an existing list'}
         )
         self.assertRedirects(response, '/lists/%d/' % (correct_list.id,))
+
 
     def post_invalid_input(self):
         list_ = List.objects.create()
@@ -120,6 +130,10 @@ class ListViewTest(TestCase):
             '/lists/%d/' % (list_.id,),
             data={'text': ''}
         )
+
+    def test_for_invalid_input_nothing_saved_to_db(self):
+        self.post_invalid_input()
+        self.assertEqual(Item.objects.count(), 0)
 
     def test_for_invalid_input_renders_list_template(self):
         response = self.post_invalid_input()
@@ -130,10 +144,6 @@ class ListViewTest(TestCase):
         response = self.post_invalid_input()
         self.assertIsInstance(response.context['form'], ItemForm)
 
-    def test_for_invalid_shows_error_on_page(self):
+    def test_for_invalid_input_shows_error_on_page(self):
         response = self.post_invalid_input()
         self.assertContains(response, escape(EMPTY_ITEM_ERROR))
-
-
-
-
